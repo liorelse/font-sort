@@ -67,7 +67,10 @@ def move_files(source_folder: str, library: str):
                 name, family, style = font_details(source_file)
             except TypeError:
                 continue
-            dest_folder = os.path.join(library, family[0].upper(), family)
+            index_folder = family[0].upper()
+            if index_folder.isnumeric():
+                index_folder = '0..9'
+            dest_folder = os.path.join(library, index_folder, family)
             ext = file.split(".")[-1].lower()
             font_name = f"{name}.{ext}"
             dest_file = os.path.join(dest_folder, font_name)
