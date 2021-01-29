@@ -4,6 +4,7 @@ import os
 from fontTools import ttLib
 from shutil import (copyfile, move)
 from contextlib import redirect_stderr
+from tqdm import tqdm
 
 
 def index_in_list(index: int, check_list: list) -> bool:
@@ -16,7 +17,10 @@ def font_details(file_path: str):
     try:
         font = ttLib.TTFont(file_path, ignoreDecompileErrors=True)
     except ttLib.TTLibError:
-        return
+        return None
+    except OSError as err:
+        print(err)
+        return None
     with redirect_stderr(None):
         names = font["name"].names
     details = {}
@@ -28,13 +32,13 @@ def font_details(file_path: str):
                 details[name.nameID] = name.string.decode(errors="ignore")
     name, family, style = ("",) * 3
     if 4 in details.keys():
-        name = details[4]
+        name = details[4].strip()
     if 16 in details.keys():
-        family = details[16]
+        family = details[16].strip()
     elif 1 in details.keys():
-        family = details[1]
+        family = details[1].strip()
     if 2 in details.keys():
-        style = details[2]
+        style = details[2].strip()
     return name, family, style
 
 
@@ -60,14 +64,14 @@ def move_files(source_folder: str, library: str):
     source_folder = source_folder.replace("\\", "/")
     library = library.replace("\\", "/")
     name, family, style = (None,) * 3
-    for root, sub_folders, files in os.walk(source_folder):
+    for root, sub_folders, files in tqdm(os.walk(source_folder)):
         for file in files:
             source_file = os.path.join(root, file)
             try:
                 name, family, style = font_details(source_file)
-            except TypeError:
+                index_folder = family[0].upper()
+            except (TypeError, IndexError):
                 continue
-            index_folder = family[0].upper()
             if index_folder.isnumeric():
                 index_folder = '0..9'
             dest_folder = os.path.join(library, index_folder, family)
@@ -80,7 +84,7 @@ def move_files(source_folder: str, library: str):
                 dest_file = os.path.join(dest_folder, font_name)
                 num = +num
             path_create(dest_folder)
-            copyfile(source_file, dest_file)
+            move(source_file, dest_file)
 
 
 def main():
